@@ -173,7 +173,6 @@ object DataFilter {
   def filterFirstLetter(x: (String, Array[String])): Boolean = {
     val firstLetter = x._2(1)(0)
     if (firstLetter >= 'a' || firstLetter <= 'z') true else false
-    throw new RuntimeException("To be implemented")
   }
 
 }
