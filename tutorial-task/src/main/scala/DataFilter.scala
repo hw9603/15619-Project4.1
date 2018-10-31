@@ -79,7 +79,27 @@ object DataFilter {
       * Aggregate intermediateOutput, similar to how the reducer aggregated intermediate K,V pairs
       * into the final output in the MapReduce program.
       */
-    val output: RDD[String] = ???
+    val output: RDD[String] = intermediateOutput
+    .map{
+      case (date, line) =>
+        val dateInt = date.toInt
+        val dateIndex = if (dateInt >= 20180401) dateInt - 20180401 + 24 else dateInt - 20180308
+        val title = line(1)
+        val count = line(2).toInt
+        val dailyViews = Array.fill(30)(0)
+        dailyViews(dateIndex) = count
+        (title, dailyViews)
+    }
+    .reduceByKey((a: Array[Int], b: Array[Int]) => (a, b).zipped.map(_ + _))
+    .filter{
+      case (title, dailyViews) => dailyViews.sum > 100000
+    }
+    .map{
+      case (title, dailyViews) =>
+        val viewSum = dailyViews.sum
+        val output = viewSum + "\t" + title + "\t" + dailyViews.mkString("\t")
+        output
+    }
 
     /**
       * The output path should be `wasb:///filter-output`.
@@ -134,7 +154,7 @@ object DataFilter {
     */
   def filterPrefix(x: (String, Array[String])): Boolean = {
     val title = x._2(1).toLowerCase
-    prefixBlacklist.exists(prefix => title.startsWith(prefix))
+    !prefixBlacklist.exists(prefix => title.startsWith(prefix))
   }
 
   /**
@@ -172,7 +192,7 @@ object DataFilter {
     */
   def filterFirstLetter(x: (String, Array[String])): Boolean = {
     val firstLetter = x._2(1)(0)
-    if (firstLetter >= 'a' || firstLetter <= 'z') true else false
+    if (firstLetter >= 'a' && firstLetter <= 'z') false else true
   }
 
 }
