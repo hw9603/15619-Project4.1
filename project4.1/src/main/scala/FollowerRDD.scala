@@ -9,15 +9,16 @@ object FollowerRDD {
         val sc = new SparkContext(conf)
 
         val graphRDD = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
-        val output: RDD[String] = graphRDD.distinct()
+        val outputArray = graphRDD.distinct()
             .map(line => (line.split("\t")(1), 1))
             .reduceByKey(_ + _)
             .sortBy(_._2)
-            .take(100)
             .map{
                 case (userid, count) =>
                     userid + "\t" + count
-            }
+            }.take(100)
+
+        val output: RDD[String] = sc.parallelize(outputArray)
 
         output.saveAsTextFile("wasb:///followerRDD-output")
         sc.stop()
