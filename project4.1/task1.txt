@@ -1,0 +1,5 @@
+val graphRDD = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
+// count edges
+graphRDD.map(edge => (edge, 0)).reduceByKey(_ + _).count()
+// count nodes
+graphRDD.flatMap(line => line.split("\t")).map(vertex => (vertex, 0)).reduceByKey(_ + _).count()
