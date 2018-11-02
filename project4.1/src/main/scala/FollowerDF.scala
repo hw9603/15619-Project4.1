@@ -9,17 +9,24 @@ object FollowerDF {
     def main(args: Array[String]): Unit = {
         val spark = SparkSession
           .builder
-          .appName("Twitter ETL")
+          .appName("task1")
           .getOrCreate()
         import spark.implicits._
         val sc = spark.sparkContext
 
-        val graphDF = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
-                         .map(line => line.split("\t")).toDF("follower", "followee")
+        // val graphRDD = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
+        val graphRDD = sc.textFile("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/graph")
+
+        val graphDF = graphRDD.map{
+          line =>
+            val follows = line.split("\t")
+            (follows(0), follows(1))
+        }.toDF("follower", "followee")
 
         val df = graphDF.distinct().groupBy("followee").count().limit(100)
 
-        df.write.format("parquet").save("wasb:///followerDF-output")
+        // df.write.format("parquet").save("wasb:///followerDF-output")
+        df.write.format("parquet").save("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/followerDF-output")
         sc.stop()
     }
 }
