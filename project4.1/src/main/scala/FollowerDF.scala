@@ -14,19 +14,20 @@ object FollowerDF {
         import spark.implicits._
         val sc = spark.sparkContext
 
-        // val graphRDD = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
-        val graphRDD = sc.textFile("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/graph")
+        val graphRDD = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
 
+        // Convert the RDD to Dataframe
         val graphDF = graphRDD.map{
           line =>
             val follows = line.split("\t")
             (follows(0), follows(1))
         }.toDF("follower", "followee")
 
-        val df = graphDF.distinct().groupBy("followee").count().limit(100)
+        // Use Spark SQL API to do the counting and sorting job
+        val df = graphDF.groupBy("followee").count().orderBy($"count".desc).limit(100)
 
-        // df.write.format("parquet").save("wasb:///followerDF-output")
-        df.write.format("parquet").save("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/followerDF-output")
+        df.write.format("parquet").save("wasb:///followerDF-output")
+
         sc.stop()
     }
 }
