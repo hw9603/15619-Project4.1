@@ -11,23 +11,19 @@ object PageRank {
         val spark = SparkSession
           .builder
           .appName("PageRank")
-          .config("spark.driver.memory", "2g")
-          .config("spark.executor.memory", "2g")
-          .config("spark.executor.cores", "4")
-          .config("spark.executor.extraJavaOptions", "-XX:+UseG1GC")
           .getOrCreate()
         import spark.implicits._
         val sc = spark.sparkContext
 
         val iters = 10
         val lines = sc.textFile("wasb://spark@cmuccpublicdatasets.blob.core.windows.net/Graph")
-        // val lines = sc.textFile("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/graph2")
 
         val followees = lines.map(s => s.split("\t")(1))
         val followers = lines.map(s => s.split("\t")(0))
-
+        // find the dangling users
         val dangling = followees.subtract(followers).distinct().map(user => (user, "na"))
 
+        // Combine dangling and non-dangling users
         val links = lines.map{ s =>
           val follows = s.split("\t")
           (follows(0), follows(1))
@@ -35,19 +31,20 @@ object PageRank {
 
         // the number of total nodes
         val nodes = 1006458
-        // val nodes = 3
-
+        // initialize the ranks to be 1/N
         var ranks = links.mapValues(v => (1.0 / nodes))
 
         for (i <- 1 to iters) {
           var dang = sc.accumulator(0.0)
-          val rankedLink = links.join(ranks).values.cache()
+          val rankedLink = links.join(ranks).values
+          // Compute the contribution of all dangling users
           rankedLink.foreach{
             case (followeeArr, rank) =>
               if (followeeArr.exists(x => x == "na")) {
                 dang.add(rank)
               }
           }
+          // Compute non-dangling users' contribution
           val contribs = rankedLink.flatMap{
             case (followeeArr, rank) =>
               val numNeighbors = followeeArr.size
@@ -63,7 +60,6 @@ object PageRank {
 
         val output = ranks.map{case (userid, rank) => userid + "\t" + rank}
         output.saveAsTextFile("wasb:///pagerank-output")
-        // output.saveAsTextFile("file:///Users/hewen/Stuffs/Fall2018/15-619/15619-Project4.1/pagerank-output")
 
         spark.stop()
     }
